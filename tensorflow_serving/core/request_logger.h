@@ -21,6 +21,8 @@ limitations under the License.
 #include <vector>
 
 #include "google/protobuf/message.h"
+#include "absl/base/thread_annotations.h"
+#include "absl/synchronization/mutex.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow_serving/apis/logging.pb.h"
 #include "tensorflow_serving/config/logging_config.pb.h"
@@ -82,12 +84,19 @@ class RequestLogger : public std::enable_shared_from_this<RequestLogger> {
 
     // Returns true if the sampler decides to sample it with a probability
     // 'rate'.
-    bool Sample(const double rate) { return dist_(gen_) < rate; }
+    bool Sample(const double rate) {
+      if (rate <= 0.0) return false;
+      if (rate >= 1.0) return true;
+      absl::MutexLock lock(&mu_);
+      return dist_(gen_) < rate;
+    }
 
    private:
-    std::random_device rd_;
-    std::mt19937 gen_;
-    std::uniform_real_distribution<double> dist_;
+    absl::Mutex mu_;
+    // NOLINTNEXTLINE(runtime/random_device)
+    std::random_device rd_ ABSL_GUARDED_BY(mu_);
+    std::mt19937 gen_ ABSL_GUARDED_BY(mu_);
+    std::uniform_real_distribution<double> dist_ ABSL_GUARDED_BY(mu_);
   };
 
   LoggingConfig logging_config_;
