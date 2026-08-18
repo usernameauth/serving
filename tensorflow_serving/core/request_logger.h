@@ -16,12 +16,12 @@ limitations under the License.
 #ifndef TENSORFLOW_SERVING_CORE_REQUEST_LOGGER_H_
 #define TENSORFLOW_SERVING_CORE_REQUEST_LOGGER_H_
 
-#include <random>
 #include <string>
 #include <vector>
 
 #include "google/protobuf/message.h"
 #include "absl/base/thread_annotations.h"
+#include "absl/random/random.h"
 #include "absl/synchronization/mutex.h"
 #include "tensorflow/core/lib/core/status.h"
 #include "tensorflow_serving/apis/logging.pb.h"
@@ -80,7 +80,7 @@ class RequestLogger : public std::enable_shared_from_this<RequestLogger> {
   // A sampler which samples uniformly at random.
   class UniformSampler {
    public:
-    UniformSampler() : rd_(), gen_(rd_()), dist_(0, 1) {}
+    UniformSampler() = default;
 
     // Returns true if the sampler decides to sample it with a probability
     // 'rate'.
@@ -88,15 +88,12 @@ class RequestLogger : public std::enable_shared_from_this<RequestLogger> {
       if (rate <= 0.0) return false;
       if (rate >= 1.0) return true;
       absl::MutexLock lock(&mu_);
-      return dist_(gen_) < rate;
+      return absl::Uniform(bit_gen_, 0.0, 1.0) < rate;
     }
 
    private:
     absl::Mutex mu_;
-    // NOLINTNEXTLINE(runtime/random_device)
-    std::random_device rd_ ABSL_GUARDED_BY(mu_);
-    std::mt19937 gen_ ABSL_GUARDED_BY(mu_);
-    std::uniform_real_distribution<double> dist_ ABSL_GUARDED_BY(mu_);
+    absl::BitGen bit_gen_ ABSL_GUARDED_BY(mu_);
   };
 
   LoggingConfig logging_config_;

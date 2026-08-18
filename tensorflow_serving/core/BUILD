@@ -839,6 +839,7 @@ cc_library(
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/config:logging_config_cc_proto",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/random",
         "@com_google_absl//absl/synchronization",
         "@com_google_protobuf//:protobuf",
         "@org_tensorflow//tensorflow/core:lib",
