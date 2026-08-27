@@ -24,8 +24,8 @@ local_repository(
 load("//tensorflow_serving:repo.bzl", "tensorflow_http_archive")
 tensorflow_http_archive(
     name = "org_tensorflow",
-    sha256 = "4c6eca6c710f165ed8132e4ddbc621165afb5d9d522ae5779476855c5952f628",
-    git_commit = "2f504bde54087483657c7066f9982a146c32ddfc",
+    sha256 = "6438396f3b19af5d7ad787cf041f857af7505916dc08092e20b07d1b1f8df492",
+    git_commit = "a481b10260dfdf833a1b16007eead49c1d7febf3",
     patch = "//third_party/tensorflow:tensorflow.patch",
     patch_cmds = [
         """python3 -c 'import re, glob
@@ -42,10 +42,11 @@ for p in glob.glob("third_party/xla/**/BUILD*", recursive=True):
         if m_th:
             th = m_th.group(1); b_no = b[:m_th.start()] + b[m_th.end():]; m_h = re.search(r"hdrs\\s*=\\s*(\\[[^\\]]*\\])", b_no, re.DOTALL)
             if m_h:
-                h_str = m_h.group(1).rstrip("]").strip().rstrip(",")
-                th_str = th.lstrip("[").strip()
-                b = b_no[:m_h.start()] + "hdrs = " + h_str + ", " + th_str + b_no[m_h.end():]
-            else: b = b_no.rpartition(")")[0] + "\\n    hdrs = " + th + ",\\n)"
+                th_items = [x.strip() for x in th.lstrip("[").rstrip("]").split(",") if x.strip()]
+                h_items = [x.strip() for x in m_h.group(1).lstrip("[").rstrip("]").split(",") if x.strip()]
+                merged = h_items + [x for x in th_items if x not in h_items]
+                b = b_no[:m_h.start()] + "hdrs = [" + ", ".join(merged) + "]" + b_no[m_h.end():]
+            else: b = b[:m_th.start()] + "hdrs = " + th + ",\\n" + b[m_th.end():]
         new_parts.append(b + rest)
     open(p, "w").write("cc_library(".join(new_parts))'""",
         "find . -name \"gin_proxy.h\" -exec python3 -c 'import sys; f=sys.argv[1]; c=open(f).read().replace(\"for (uint8_t i = 0; i < 4; i++)\", \"for (uint8_t i = 0; i < 16; i++)\").replace(\"__stwt((uint4*)&q[idx] + i, ((uint4*)gfd)[i]);\", \"__stwt((__half2*)&q[idx] + i, ((__half2*)gfd)[i]);\"); open(f, \"w\").write(c)' {} \\;",
